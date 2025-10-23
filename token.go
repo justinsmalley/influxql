@@ -122,6 +122,7 @@ const (
 	RESAMPLE
 	RETENTION
 	REVOKE
+	RENAME
 	SELECT
 	SERIES
 	SET
@@ -245,6 +246,7 @@ var tokens = [...]string{
 	RESAMPLE:      "RESAMPLE",
 	RETENTION:     "RETENTION",
 	REVOKE:        "REVOKE",
+	RENAME:        "RENAME",
 	SELECT:        "SELECT",
 	SERIES:        "SERIES",
 	SET:           "SET",

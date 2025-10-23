@@ -724,6 +724,80 @@ func (s *DropUserStatement) RequiredPrivileges() (ExecutionPrivileges, error) {
 	return ExecutionPrivileges{{Admin: true, Name: "", Privilege: AllPrivileges}}, nil
 }
 
+// DropFieldStatement represents a command to drop a field from a measurement.
+type DropFieldStatement struct {
+	// Name of the field to drop.
+	Name string
+	// Name of the measurement containing the field.
+	Measurement string
+	// Name of the database containing the measurement.
+	Database string
+}
+
+// String returns a string representation of the drop field statement.
+func (s *DropFieldStatement) String() string {
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("DROP FIELD ")
+	_, _ = buf.WriteString(QuoteIdent(s.Name))
+	_, _ = buf.WriteString(" FROM ")
+	_, _ = buf.WriteString(QuoteIdent(s.Measurement))
+	if s.Database != "" {
+		_, _ = buf.WriteString(" ON ")
+		_, _ = buf.WriteString(QuoteIdent(s.Database))
+	}
+	return buf.String()
+}
+
+// RequiredPrivileges returns the privilege(s) required to execute a DropFieldStatement.
+func (s *DropFieldStatement) RequiredPrivileges() (ExecutionPrivileges, error) {
+	return ExecutionPrivileges{{Admin: false, Name: s.Database, Privilege: WritePrivilege}}, nil
+}
+
+// stmt is unexported to ensure implementations of Statement can only originate in this package.
+func (s *DropFieldStatement) stmt() {}
+
+// node is unexported to ensure implementations of Node can only originate in this package.
+func (s *DropFieldStatement) node() {}
+
+// RenameFieldStatement represents a command to rename a field in a measurement.
+type RenameFieldStatement struct {
+	// Old name of the field.
+	OldName string
+	// New name of the field.
+	NewName string
+	// Name of the measurement containing the field.
+	Measurement string
+	// Name of the database containing the measurement.
+	Database string
+}
+
+// String returns a string representation of the rename field statement.
+func (s *RenameFieldStatement) String() string {
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("ALTER MEASUREMENT ")
+	_, _ = buf.WriteString(QuoteIdent(s.Measurement))
+	if s.Database != "" {
+		_, _ = buf.WriteString(" ON ")
+		_, _ = buf.WriteString(QuoteIdent(s.Database))
+	}
+	_, _ = buf.WriteString(" RENAME FIELD ")
+	_, _ = buf.WriteString(QuoteIdent(s.OldName))
+	_, _ = buf.WriteString(" TO ")
+	_, _ = buf.WriteString(QuoteIdent(s.NewName))
+	return buf.String()
+}
+
+// RequiredPrivileges returns the privilege(s) required to execute a RenameFieldStatement.
+func (s *RenameFieldStatement) RequiredPrivileges() (ExecutionPrivileges, error) {
+	return ExecutionPrivileges{{Admin: false, Name: s.Database, Privilege: WritePrivilege}}, nil
+}
+
+// stmt is unexported to ensure implementations of Statement can only originate in this package.
+func (s *RenameFieldStatement) stmt() {}
+
+// node is unexported to ensure implementations of Node can only originate in this package.
+func (s *RenameFieldStatement) node() {}
+
 // Privilege is a type of action a user can be granted the right to use.
 type Privilege int
 

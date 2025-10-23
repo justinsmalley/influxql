@@ -196,6 +196,9 @@ func init() {
 		drop.Handle(DATABASE, func(p *Parser) (Statement, error) {
 			return p.parseDropDatabaseStatement()
 		})
+		drop.Handle(FIELD, func(p *Parser) (Statement, error) {
+			return p.parseDropFieldStatement()
+		})
 		drop.Handle(MEASUREMENT, func(p *Parser) (Statement, error) {
 			return p.parseDropMeasurementStatement()
 		})
@@ -226,6 +229,9 @@ func init() {
 	})
 	Language.Group(ALTER, RETENTION).Handle(POLICY, func(p *Parser) (Statement, error) {
 		return p.parseAlterRetentionPolicyStatement()
+	})
+	Language.Group(ALTER).Handle(MEASUREMENT, func(p *Parser) (Statement, error) {
+		return p.parseAlterMeasurementStatement()
 	})
 	Language.Group(SET, PASSWORD).Handle(FOR, func(p *Parser) (Statement, error) {
 		return p.parseSetPasswordUserStatement()
