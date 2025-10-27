@@ -123,6 +123,9 @@ func init() {
 			field.Handle(KEYS, func(p *Parser) (Statement, error) {
 				return p.parseShowFieldKeysStatement()
 			})
+			field.Handle(MAPPINGS, func(p *Parser) (Statement, error) {
+				return p.parseShowFieldMappingsStatement()
+			})
 		})
 		show.Group(GRANTS).Handle(FOR, func(p *Parser) (Statement, error) {
 			return p.parseGrantsForUserStatement()

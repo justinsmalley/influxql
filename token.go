@@ -105,6 +105,7 @@ const (
 	KEYS
 	KILL
 	LIMIT
+	MAPPINGS
 	MEASUREMENT
 	MEASUREMENTS
 	NAME
@@ -229,6 +230,7 @@ var tokens = [...]string{
 	KEYS:          "KEYS",
 	KILL:          "KILL",
 	LIMIT:         "LIMIT",
+	MAPPINGS:      "MAPPINGS",
 	MEASUREMENT:   "MEASUREMENT",
 	MEASUREMENTS:  "MEASUREMENTS",
 	NAME:          "NAME",

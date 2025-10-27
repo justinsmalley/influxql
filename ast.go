@@ -237,6 +237,7 @@ func (*ShowGrantsForUserStatement) node()          {}
 func (*ShowDatabasesStatement) node()              {}
 func (*ShowFieldKeyCardinalityStatement) node()    {}
 func (*ShowFieldKeysStatement) node()              {}
+func (*ShowFieldMappingsStatement) node()          {}
 func (*ShowRetentionPoliciesStatement) node()      {}
 func (*ShowMeasurementCardinalityStatement) node() {}
 func (*ShowMeasurementsStatement) node()           {}
@@ -360,6 +361,7 @@ func (*ShowGrantsForUserStatement) stmt()          {}
 func (*ShowDatabasesStatement) stmt()              {}
 func (*ShowFieldKeyCardinalityStatement) stmt()    {}
 func (*ShowFieldKeysStatement) stmt()              {}
+func (*ShowFieldMappingsStatement) stmt()          {}
 func (*ShowMeasurementCardinalityStatement) stmt() {}
 func (*ShowMeasurementsStatement) stmt()           {}
 func (*ShowQueriesStatement) stmt()                {}
@@ -1479,8 +1481,8 @@ func (s *SelectStatement) RewriteFields(m FieldMapper) (*SelectStatement, error)
 //
 // Conditions that can currently be simplified are:
 //
-//     - host =~ /^foo$/ becomes host = 'foo'
-//     - host !~ /^foo$/ becomes host != 'foo'
+//   - host =~ /^foo$/ becomes host = 'foo'
+//   - host !~ /^foo$/ becomes host != 'foo'
 //
 // Note: if the regex contains groups, character classes, repetition or
 // similar, it's likely it won't be rewritten. In order to support rewriting
@@ -3318,6 +3320,60 @@ func (s *ShowFieldKeysStatement) DefaultDatabase() string {
 	return s.Database
 }
 
+// ShowFieldMappingsStatement represents a command for listing field mappings
+type ShowFieldMappingsStatement struct {
+	// Database to query. If blank, use the default database.
+	Database string
+
+	// Optional measurement filter
+	Sources Sources
+
+	// Returns rows starting at an offset from the first row.
+	Offset int
+
+	// Maximum number of rows to be returned.
+	// Unlimited if zero.
+	Limit int
+}
+
+// String returns a string representation of the statement.
+func (s *ShowFieldMappingsStatement) String() string {
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("SHOW FIELD MAPPINGS")
+
+	if s.Database != "" {
+		_, _ = buf.WriteString(" ON ")
+		_, _ = buf.WriteString(QuoteIdent(s.Database))
+	}
+
+	if s.Sources != nil {
+		_, _ = buf.WriteString(" FROM ")
+		_, _ = buf.WriteString(s.Sources.String())
+	}
+
+	if s.Limit > 0 {
+		_, _ = buf.WriteString(" LIMIT ")
+		_, _ = buf.WriteString(strconv.Itoa(s.Limit))
+	}
+
+	if s.Offset > 0 {
+		_, _ = buf.WriteString(" OFFSET ")
+		_, _ = buf.WriteString(strconv.Itoa(s.Offset))
+	}
+
+	return buf.String()
+}
+
+// RequiredPrivileges returns the privilege(s) required to execute a ShowFieldMappingsStatement.
+func (s *ShowFieldMappingsStatement) RequiredPrivileges() (ExecutionPrivileges, error) {
+	return ExecutionPrivileges{{Admin: false, Name: s.Database, Privilege: ReadPrivilege}}, nil
+}
+
+// DefaultDatabase returns the default database from the statement.
+func (s *ShowFieldMappingsStatement) DefaultDatabase() string {
+	return s.Database
+}
+
 // Fields represents a list of fields.
 type Fields []*Field
 
@@ -4010,6 +4066,9 @@ func Walk(v Visitor, node Node) {
 	case *ShowFieldKeysStatement:
 		Walk(v, n.Sources)
 		Walk(v, n.SortFields)
+
+	case *ShowFieldMappingsStatement:
+		Walk(v, n.Sources)
 
 	case SortFields:
 		for _, sf := range n {
@@ -5886,4 +5945,3 @@ func getTimeRange(op Token, rhs Expr, valuer Valuer) (TimeRange, error) {
 	}
 	return timeRange, nil
 }
-

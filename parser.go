@@ -1537,6 +1537,45 @@ func (p *Parser) parseShowFieldKeysStatement() (*ShowFieldKeysStatement, error) 
 	return stmt, nil
 }
 
+// parseShowFieldMappingsStatement parses a string and returns a Statement.
+// This function assumes the "SHOW FIELD MAPPINGS" tokens have already been consumed.
+func (p *Parser) parseShowFieldMappingsStatement() (*ShowFieldMappingsStatement, error) {
+	stmt := &ShowFieldMappingsStatement{}
+	var err error
+
+	// Parse optional ON clause.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == ON {
+		// Parse the database.
+		stmt.Database, err = p.ParseIdent()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		p.Unscan()
+	}
+
+	// Parse optional source.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == FROM {
+		if stmt.Sources, err = p.parseSources(false); err != nil {
+			return nil, err
+		}
+	} else {
+		p.Unscan()
+	}
+
+	// Parse limit: "LIMIT <n>".
+	if stmt.Limit, err = p.ParseOptionalTokenAndInt(LIMIT); err != nil {
+		return nil, err
+	}
+
+	// Parse offset: "OFFSET <n>".
+	if stmt.Offset, err = p.ParseOptionalTokenAndInt(OFFSET); err != nil {
+		return nil, err
+	}
+
+	return stmt, nil
+}
+
 // parseDropMeasurementStatement parses a string and returns a DropMeasurementStatement.
 // This function assumes the "DROP MEASUREMENT" tokens have already been consumed.
 func (p *Parser) parseDropMeasurementStatement() (*DropMeasurementStatement, error) {
