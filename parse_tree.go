@@ -130,6 +130,9 @@ func init() {
 		show.Group(GRANTS).Handle(FOR, func(p *Parser) (Statement, error) {
 			return p.parseGrantsForUserStatement()
 		})
+		show.Group(MEASUREMENT).Handle(MAPPINGS, func(p *Parser) (Statement, error) {
+			return p.parseShowMeasurementMappingsStatement()
+		})
 		show.Group(MEASUREMENT).Handle(EXACT, func(p *Parser) (Statement, error) {
 			return p.parseShowMeasurementCardinalityStatement(true)
 		})

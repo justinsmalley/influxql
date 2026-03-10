@@ -241,6 +241,7 @@ func (*ShowFieldMappingsStatement) node()          {}
 func (*ShowRetentionPoliciesStatement) node()      {}
 func (*ShowMeasurementCardinalityStatement) node() {}
 func (*ShowMeasurementsStatement) node()           {}
+func (*ShowMeasurementMappingsStatement) node()    {}
 func (*ShowQueriesStatement) node()                {}
 func (*ShowSeriesStatement) node()                 {}
 func (*ShowSeriesCardinalityStatement) node()      {}
@@ -364,6 +365,7 @@ func (*ShowFieldKeysStatement) stmt()              {}
 func (*ShowFieldMappingsStatement) stmt()          {}
 func (*ShowMeasurementCardinalityStatement) stmt() {}
 func (*ShowMeasurementsStatement) stmt()           {}
+func (*ShowMeasurementMappingsStatement) stmt()    {}
 func (*ShowQueriesStatement) stmt()                {}
 func (*ShowRetentionPoliciesStatement) stmt()      {}
 func (*ShowSeriesStatement) stmt()                 {}
@@ -799,6 +801,41 @@ func (s *RenameFieldStatement) stmt() {}
 
 // node is unexported to ensure implementations of Node can only originate in this package.
 func (s *RenameFieldStatement) node() {}
+
+// RenameMeasurementStatement represents a command to rename a measurement.
+type RenameMeasurementStatement struct {
+	// Old name of the measurement.
+	OldName string
+	// New name of the measurement.
+	NewName string
+	// Name of the database containing the measurement.
+	Database string
+}
+
+// String returns a string representation of the rename measurement statement.
+func (s *RenameMeasurementStatement) String() string {
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("ALTER MEASUREMENT ")
+	_, _ = buf.WriteString(QuoteIdent(s.OldName))
+	if s.Database != "" {
+		_, _ = buf.WriteString(" ON ")
+		_, _ = buf.WriteString(QuoteIdent(s.Database))
+	}
+	_, _ = buf.WriteString(" RENAME TO ")
+	_, _ = buf.WriteString(QuoteIdent(s.NewName))
+	return buf.String()
+}
+
+// RequiredPrivileges returns the privilege(s) required to execute a RenameMeasurementStatement.
+func (s *RenameMeasurementStatement) RequiredPrivileges() (ExecutionPrivileges, error) {
+	return ExecutionPrivileges{{Admin: false, Name: s.Database, Privilege: WritePrivilege}}, nil
+}
+
+// stmt is unexported to ensure implementations of Statement can only originate in this package.
+func (s *RenameMeasurementStatement) stmt() {}
+
+// node is unexported to ensure implementations of Node can only originate in this package.
+func (s *RenameMeasurementStatement) node() {}
 
 // Privilege is a type of action a user can be granted the right to use.
 type Privilege int
@@ -3371,6 +3408,52 @@ func (s *ShowFieldMappingsStatement) RequiredPrivileges() (ExecutionPrivileges, 
 
 // DefaultDatabase returns the default database from the statement.
 func (s *ShowFieldMappingsStatement) DefaultDatabase() string {
+	return s.Database
+}
+
+// ShowMeasurementMappingsStatement represents a command for listing measurement mappings
+type ShowMeasurementMappingsStatement struct {
+	// Database to query. If blank, use the default database.
+	Database string
+
+	// Returns rows starting at an offset from the first row.
+	Offset int
+
+	// Maximum number of rows to be returned.
+	// Unlimited if zero.
+	Limit int
+}
+
+// String returns a string representation of the statement.
+func (s *ShowMeasurementMappingsStatement) String() string {
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("SHOW MEASUREMENT MAPPINGS")
+
+	if s.Database != "" {
+		_, _ = buf.WriteString(" ON ")
+		_, _ = buf.WriteString(QuoteIdent(s.Database))
+	}
+
+	if s.Limit > 0 {
+		_, _ = buf.WriteString(" LIMIT ")
+		_, _ = buf.WriteString(strconv.Itoa(s.Limit))
+	}
+
+	if s.Offset > 0 {
+		_, _ = buf.WriteString(" OFFSET ")
+		_, _ = buf.WriteString(strconv.Itoa(s.Offset))
+	}
+
+	return buf.String()
+}
+
+// RequiredPrivileges returns the privilege(s) required to execute a ShowMeasurementMappingsStatement.
+func (s *ShowMeasurementMappingsStatement) RequiredPrivileges() (ExecutionPrivileges, error) {
+	return ExecutionPrivileges{{Admin: false, Name: s.Database, Privilege: ReadPrivilege}}, nil
+}
+
+// DefaultDatabase returns the default database from the statement.
+func (s *ShowMeasurementMappingsStatement) DefaultDatabase() string {
 	return s.Database
 }
 

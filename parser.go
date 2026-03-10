@@ -1576,6 +1576,36 @@ func (p *Parser) parseShowFieldMappingsStatement() (*ShowFieldMappingsStatement,
 	return stmt, nil
 }
 
+// parseShowMeasurementMappingsStatement parses a string and returns a Statement.
+// This function assumes the "SHOW MEASUREMENT MAPPINGS" tokens have already been consumed.
+func (p *Parser) parseShowMeasurementMappingsStatement() (*ShowMeasurementMappingsStatement, error) {
+	stmt := &ShowMeasurementMappingsStatement{}
+	var err error
+
+	// Parse optional ON clause.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == ON {
+		// Parse the database.
+		stmt.Database, err = p.ParseIdent()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		p.Unscan()
+	}
+
+	// Parse limit: "LIMIT <n>".
+	if stmt.Limit, err = p.ParseOptionalTokenAndInt(LIMIT); err != nil {
+		return nil, err
+	}
+
+	// Parse offset: "OFFSET <n>".
+	if stmt.Offset, err = p.ParseOptionalTokenAndInt(OFFSET); err != nil {
+		return nil, err
+	}
+
+	return stmt, nil
+}
+
 // parseDropMeasurementStatement parses a string and returns a DropMeasurementStatement.
 // This function assumes the "DROP MEASUREMENT" tokens have already been consumed.
 func (p *Parser) parseDropMeasurementStatement() (*DropMeasurementStatement, error) {
@@ -2020,10 +2050,38 @@ func (p *Parser) parseAlterMeasurementStatement() (Statement, error) {
 	// Check what operation to perform.
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	if tok == RENAME {
-		return p.parseRenameFieldStatementWithMeasurement(measurementName, databaseName)
+		// Lookahead to see if it's "RENAME FIELD" or "RENAME TO"
+		tok2, _, _ := p.ScanIgnoreWhitespace()
+		if tok2 == FIELD {
+			p.Unscan()
+			return p.parseRenameFieldStatementWithMeasurement(measurementName, databaseName)
+		} else if tok2 == TO {
+			// Do not unscan TO, because parseRenameMeasurementStatementWithMeasurement expects it to be consumed.
+			return p.parseRenameMeasurementStatementWithMeasurement(measurementName, databaseName)
+		}
+		p.Unscan() // unscan tok2
+		return nil, newParseError(tokstr(tok2, lit), []string{"FIELD", "TO"}, pos)
 	}
 
 	return nil, newParseError(tokstr(tok, lit), []string{"RENAME"}, pos)
+}
+
+// parseRenameMeasurementStatementWithMeasurement parses a RENAME TO statement with the measurement already parsed.
+// This function assumes the "ALTER MEASUREMENT <measurement> [ON <database>] RENAME TO" tokens have already been consumed.
+func (p *Parser) parseRenameMeasurementStatementWithMeasurement(measurementName, databaseName string) (*RenameMeasurementStatement, error) {
+	stmt := &RenameMeasurementStatement{
+		OldName:  measurementName,
+		Database: databaseName,
+	}
+
+	// Parse the new measurement name.
+	lit, err := p.ParseIdent()
+	if err != nil {
+		return nil, err
+	}
+	stmt.NewName = lit
+
+	return stmt, nil
 }
 
 // parseRenameFieldStatementWithMeasurement parses a RENAME FIELD statement with the measurement already parsed.
