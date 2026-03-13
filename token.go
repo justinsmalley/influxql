@@ -105,6 +105,7 @@ const (
 	KEYS
 	KILL
 	LIMIT
+	// MAPPINGS is a global keyword despite backwards incompatibility (can't be used as unquoted identifier)
 	MAPPINGS
 	MEASUREMENT
 	MEASUREMENTS
@@ -119,11 +120,12 @@ const (
 	QUERIES
 	QUERY
 	READ
+	// RENAME is a global keyword despite backwards incompatibility (can't be used as unquoted identifier)
+	RENAME
 	REPLICATION
 	RESAMPLE
 	RETENTION
 	REVOKE
-	RENAME
 	SELECT
 	SERIES
 	SET
@@ -244,11 +246,11 @@ var tokens = [...]string{
 	QUERIES:       "QUERIES",
 	QUERY:         "QUERY",
 	READ:          "READ",
+	RENAME:        "RENAME",
 	REPLICATION:   "REPLICATION",
 	RESAMPLE:      "RESAMPLE",
 	RETENTION:     "RETENTION",
 	REVOKE:        "REVOKE",
-	RENAME:        "RENAME",
 	SELECT:        "SELECT",
 	SERIES:        "SERIES",
 	SET:           "SET",

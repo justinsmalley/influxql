@@ -1576,6 +1576,25 @@ func (p *Parser) parseShowFieldMappingsStatement() (*ShowFieldMappingsStatement,
 	return stmt, nil
 }
 
+// parseShowDatabaseMappingsStatement parses a string and returns a Statement.
+// This function assumes the "SHOW DATABASE MAPPINGS" tokens have already been consumed.
+func (p *Parser) parseShowDatabaseMappingsStatement() (*ShowDatabaseMappingsStatement, error) {
+	stmt := &ShowDatabaseMappingsStatement{}
+	var err error
+
+	// Parse limit: "LIMIT <n>".
+	if stmt.Limit, err = p.ParseOptionalTokenAndInt(LIMIT); err != nil {
+		return nil, err
+	}
+
+	// Parse offset: "OFFSET <n>".
+	if stmt.Offset, err = p.ParseOptionalTokenAndInt(OFFSET); err != nil {
+		return nil, err
+	}
+
+	return stmt, nil
+}
+
 // parseShowMeasurementMappingsStatement parses a string and returns a Statement.
 // This function assumes the "SHOW MEASUREMENT MAPPINGS" tokens have already been consumed.
 func (p *Parser) parseShowMeasurementMappingsStatement() (*ShowMeasurementMappingsStatement, error) {
@@ -2027,6 +2046,45 @@ func (p *Parser) parseDropFieldStatement() (*DropFieldStatement, error) {
 	return stmt, nil
 }
 
+func (p *Parser) parseAlterDatabaseStatement() (Statement, error) {
+	// Parse the database name.
+	databaseName, err := p.ParseIdent()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check what operation to perform.
+	// We use RENAME as a global keyword here despite the backwards incompatibility
+	// so that we don't have to use complex manual IDENT checking.
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	if tok == RENAME {
+		tok2, pos2, lit2 := p.ScanIgnoreWhitespace()
+		if tok2 == TO {
+			return p.parseRenameDatabaseStatementWithDatabase(databaseName)
+		}
+		return nil, newParseError(tokstr(tok2, lit2), []string{"TO"}, pos2)
+	}
+
+	return nil, newParseError(tokstr(tok, lit), []string{"RENAME"}, pos)
+}
+
+// parseRenameDatabaseStatementWithDatabase parses a RENAME TO statement with the database already parsed.
+// This function assumes the "ALTER DATABASE <database> RENAME TO" tokens have already been consumed.
+func (p *Parser) parseRenameDatabaseStatementWithDatabase(databaseName string) (*RenameDatabaseStatement, error) {
+	stmt := &RenameDatabaseStatement{
+		OldName: databaseName,
+	}
+
+	// Parse the new database name.
+	lit, err := p.ParseIdent()
+	if err != nil {
+		return nil, err
+	}
+	stmt.NewName = lit
+
+	return stmt, nil
+}
+
 // parseAlterMeasurementStatement parses a string and returns an ALTER MEASUREMENT statement.
 // This function assumes the "ALTER MEASUREMENT" tokens have already been consumed.
 func (p *Parser) parseAlterMeasurementStatement() (Statement, error) {
@@ -2048,6 +2106,8 @@ func (p *Parser) parseAlterMeasurementStatement() (Statement, error) {
 	}
 
 	// Check what operation to perform.
+	// We use RENAME as a global keyword here despite the backwards incompatibility
+	// so that we don't have to use complex manual IDENT checking.
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	if tok == RENAME {
 		// Lookahead to see if it's "RENAME FIELD" or "RENAME TO"

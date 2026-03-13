@@ -241,6 +241,7 @@ func (*ShowFieldMappingsStatement) node()          {}
 func (*ShowRetentionPoliciesStatement) node()      {}
 func (*ShowMeasurementCardinalityStatement) node() {}
 func (*ShowMeasurementsStatement) node()           {}
+func (*ShowDatabaseMappingsStatement) node()       {}
 func (*ShowMeasurementMappingsStatement) node()    {}
 func (*ShowQueriesStatement) node()                {}
 func (*ShowSeriesStatement) node()                 {}
@@ -365,6 +366,7 @@ func (*ShowFieldKeysStatement) stmt()              {}
 func (*ShowFieldMappingsStatement) stmt()          {}
 func (*ShowMeasurementCardinalityStatement) stmt() {}
 func (*ShowMeasurementsStatement) stmt()           {}
+func (*ShowDatabaseMappingsStatement) stmt()       {}
 func (*ShowMeasurementMappingsStatement) stmt()    {}
 func (*ShowQueriesStatement) stmt()                {}
 func (*ShowRetentionPoliciesStatement) stmt()      {}
@@ -801,6 +803,35 @@ func (s *RenameFieldStatement) stmt() {}
 
 // node is unexported to ensure implementations of Node can only originate in this package.
 func (s *RenameFieldStatement) node() {}
+
+// RenameDatabaseStatement represents a command to rename a database.
+type RenameDatabaseStatement struct {
+	// Old name of the database.
+	OldName string
+	// New name of the database.
+	NewName string
+}
+
+// String returns a string representation of the rename database statement.
+func (s *RenameDatabaseStatement) String() string {
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("ALTER DATABASE ")
+	_, _ = buf.WriteString(QuoteIdent(s.OldName))
+	_, _ = buf.WriteString(" RENAME TO ")
+	_, _ = buf.WriteString(QuoteIdent(s.NewName))
+	return buf.String()
+}
+
+// RequiredPrivileges returns the privilege(s) required to execute a RenameDatabaseStatement.
+func (s *RenameDatabaseStatement) RequiredPrivileges() (ExecutionPrivileges, error) {
+	return ExecutionPrivileges{{Admin: true, Name: "", Privilege: AllPrivileges}}, nil
+}
+
+// stmt is unexported to ensure implementations of Statement can only originate in this package.
+func (s *RenameDatabaseStatement) stmt() {}
+
+// node is unexported to ensure implementations of Node can only originate in this package.
+func (s *RenameDatabaseStatement) node() {}
 
 // RenameMeasurementStatement represents a command to rename a measurement.
 type RenameMeasurementStatement struct {
@@ -3409,6 +3440,44 @@ func (s *ShowFieldMappingsStatement) RequiredPrivileges() (ExecutionPrivileges, 
 // DefaultDatabase returns the default database from the statement.
 func (s *ShowFieldMappingsStatement) DefaultDatabase() string {
 	return s.Database
+}
+
+// ShowDatabaseMappingsStatement represents a command for listing database mappings
+type ShowDatabaseMappingsStatement struct {
+	// Returns rows starting at an offset from the first row.
+	Offset int
+
+	// Maximum number of rows to be returned.
+	// Unlimited if zero.
+	Limit int
+}
+
+// String returns a string representation of the statement.
+func (s *ShowDatabaseMappingsStatement) String() string {
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("SHOW DATABASE MAPPINGS")
+
+	if s.Limit > 0 {
+		_, _ = buf.WriteString(" LIMIT ")
+		_, _ = buf.WriteString(strconv.Itoa(s.Limit))
+	}
+
+	if s.Offset > 0 {
+		_, _ = buf.WriteString(" OFFSET ")
+		_, _ = buf.WriteString(strconv.Itoa(s.Offset))
+	}
+
+	return buf.String()
+}
+
+// RequiredPrivileges returns the privilege(s) required to execute a ShowDatabaseMappingsStatement.
+func (s *ShowDatabaseMappingsStatement) RequiredPrivileges() (ExecutionPrivileges, error) {
+	return ExecutionPrivileges{{Admin: true, Name: "", Privilege: ReadPrivilege}}, nil
+}
+
+// DefaultDatabase returns the default database from the statement (none).
+func (s *ShowDatabaseMappingsStatement) DefaultDatabase() string {
+	return ""
 }
 
 // ShowMeasurementMappingsStatement represents a command for listing measurement mappings

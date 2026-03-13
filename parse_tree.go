@@ -110,6 +110,11 @@ func init() {
 		show.Group(CONTINUOUS).Handle(QUERIES, func(p *Parser) (Statement, error) {
 			return p.parseShowContinuousQueriesStatement()
 		})
+		// We use MAPPINGS as a global keyword here despite the backwards incompatibility
+		// so that we don't have to use complex manual IDENT checking.
+		show.Group(DATABASE).Handle(MAPPINGS, func(p *Parser) (Statement, error) {
+			return p.parseShowDatabaseMappingsStatement()
+		})
 		show.Handle(DATABASES, func(p *Parser) (Statement, error) {
 			return p.parseShowDatabasesStatement()
 		})
@@ -123,6 +128,8 @@ func init() {
 			field.Handle(KEYS, func(p *Parser) (Statement, error) {
 				return p.parseShowFieldKeysStatement()
 			})
+			// We use MAPPINGS as a global keyword here despite the backwards incompatibility
+			// so that we don't have to use complex manual IDENT checking.
 			field.Handle(MAPPINGS, func(p *Parser) (Statement, error) {
 				return p.parseShowFieldMappingsStatement()
 			})
@@ -130,6 +137,8 @@ func init() {
 		show.Group(GRANTS).Handle(FOR, func(p *Parser) (Statement, error) {
 			return p.parseGrantsForUserStatement()
 		})
+		// We use MAPPINGS as a global keyword here despite the backwards incompatibility
+		// so that we don't have to use complex manual IDENT checking.
 		show.Group(MEASUREMENT).Handle(MAPPINGS, func(p *Parser) (Statement, error) {
 			return p.parseShowMeasurementMappingsStatement()
 		})
@@ -235,6 +244,9 @@ func init() {
 	})
 	Language.Group(ALTER, RETENTION).Handle(POLICY, func(p *Parser) (Statement, error) {
 		return p.parseAlterRetentionPolicyStatement()
+	})
+	Language.Group(ALTER).Handle(DATABASE, func(p *Parser) (Statement, error) {
+		return p.parseAlterDatabaseStatement()
 	})
 	Language.Group(ALTER).Handle(MEASUREMENT, func(p *Parser) (Statement, error) {
 		return p.parseAlterMeasurementStatement()
