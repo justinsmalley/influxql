@@ -173,8 +173,23 @@ func init() {
 			return p.parseShowSubscriptionsStatement()
 		})
 		show.Group(TAG).With(func(tag *ParseTree) {
-			tag.Handle(KEY, func(p *Parser) (Statement, error) {
-				return p.parseShowTagKeyCardinalityStatement()
+			tag.Group(KEY).With(func(key *ParseTree) {
+				// SHOW TAG KEY EXACT CARDINALITY ...
+				key.Handle(EXACT, func(p *Parser) (Statement, error) {
+					p.Unscan() // put EXACT back so the cardinality parser can re-read it
+					return p.parseShowTagKeyCardinalityStatement()
+				})
+				// SHOW TAG KEY CARDINALITY ...
+				key.Handle(CARDINALITY, func(p *Parser) (Statement, error) {
+					p.Unscan() // put CARDINALITY back so the cardinality parser can re-read it
+					return p.parseShowTagKeyCardinalityStatement()
+				})
+				// SHOW TAG KEY MAPPINGS ...
+				// We use MAPPINGS as a global keyword here despite the backwards incompatibility
+				// so that we don't have to use complex manual IDENT checking.
+				key.Handle(MAPPINGS, func(p *Parser) (Statement, error) {
+					return p.parseShowTagKeyMappingsStatement()
+				})
 			})
 			tag.Handle(KEYS, func(p *Parser) (Statement, error) {
 				return p.parseShowTagKeysStatement()

@@ -2110,17 +2110,25 @@ func (p *Parser) parseAlterMeasurementStatement() (Statement, error) {
 	// so that we don't have to use complex manual IDENT checking.
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	if tok == RENAME {
-		// Lookahead to see if it's "RENAME FIELD" or "RENAME TO"
-		tok2, _, _ := p.ScanIgnoreWhitespace()
+		// Lookahead to see if it's "RENAME FIELD", "RENAME TAG KEY", or "RENAME TO"
+		tok2, pos2, lit2 := p.ScanIgnoreWhitespace()
 		if tok2 == FIELD {
 			p.Unscan()
 			return p.parseRenameFieldStatementWithMeasurement(measurementName, databaseName)
+		} else if tok2 == TAG {
+			// Expect KEY
+			if tok3, pos3, lit3 := p.ScanIgnoreWhitespace(); tok3 != KEY {
+				return nil, newParseError(tokstr(tok3, lit3), []string{"KEY"}, pos3)
+			}
+			return p.parseRenameTagKeyStatementWithMeasurement(measurementName, databaseName)
 		} else if tok2 == TO {
 			// Do not unscan TO, because parseRenameMeasurementStatementWithMeasurement expects it to be consumed.
 			return p.parseRenameMeasurementStatementWithMeasurement(measurementName, databaseName)
 		}
 		p.Unscan() // unscan tok2
-		return nil, newParseError(tokstr(tok2, lit), []string{"FIELD", "TO"}, pos)
+		_ = pos2
+		_ = lit2
+		return nil, newParseError(tokstr(tok2, lit), []string{"FIELD", "TAG", "TO"}, pos)
 	}
 
 	return nil, newParseError(tokstr(tok, lit), []string{"RENAME"}, pos)
@@ -2175,6 +2183,75 @@ func (p *Parser) parseRenameFieldStatementWithMeasurement(measurementName, datab
 		return nil, err
 	}
 	stmt.NewName = lit
+
+	return stmt, nil
+}
+
+// parseRenameTagKeyStatementWithMeasurement parses a RENAME TAG KEY statement with the measurement already parsed.
+// This function assumes the "ALTER MEASUREMENT <measurement> [ON <database>] RENAME TAG KEY" tokens have already been consumed.
+func (p *Parser) parseRenameTagKeyStatementWithMeasurement(measurementName, databaseName string) (*RenameTagKeyStatement, error) {
+	stmt := &RenameTagKeyStatement{
+		Measurement: measurementName,
+		Database:    databaseName,
+	}
+
+	// Parse the old tag key name.
+	lit, err := p.ParseIdent()
+	if err != nil {
+		return nil, err
+	}
+	stmt.OldName = lit
+
+	// Parse the TO keyword.
+	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != TO {
+		return nil, newParseError(tokstr(tok, lit), []string{"TO"}, pos)
+	}
+
+	// Parse the new tag key name.
+	lit, err = p.ParseIdent()
+	if err != nil {
+		return nil, err
+	}
+	stmt.NewName = lit
+
+	return stmt, nil
+}
+
+// parseShowTagKeyMappingsStatement parses a string and returns a Statement.
+// This function assumes the "SHOW TAG KEY MAPPINGS" tokens have already been consumed.
+func (p *Parser) parseShowTagKeyMappingsStatement() (*ShowTagKeyMappingsStatement, error) {
+	stmt := &ShowTagKeyMappingsStatement{}
+	var err error
+
+	// Parse optional ON clause.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == ON {
+		// Parse the database.
+		stmt.Database, err = p.ParseIdent()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		p.Unscan()
+	}
+
+	// Parse optional source.
+	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == FROM {
+		if stmt.Sources, err = p.parseSources(false); err != nil {
+			return nil, err
+		}
+	} else {
+		p.Unscan()
+	}
+
+	// Parse limit: "LIMIT <n>".
+	if stmt.Limit, err = p.ParseOptionalTokenAndInt(LIMIT); err != nil {
+		return nil, err
+	}
+
+	// Parse offset: "OFFSET <n>".
+	if stmt.Offset, err = p.ParseOptionalTokenAndInt(OFFSET); err != nil {
+		return nil, err
+	}
 
 	return stmt, nil
 }

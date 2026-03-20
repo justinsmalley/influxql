@@ -238,6 +238,8 @@ func (*ShowDatabasesStatement) node()              {}
 func (*ShowFieldKeyCardinalityStatement) node()    {}
 func (*ShowFieldKeysStatement) node()              {}
 func (*ShowFieldMappingsStatement) node()          {}
+func (*ShowTagKeyMappingsStatement) node()            {}
+func (*RenameTagKeyStatement) node()               {}
 func (*ShowRetentionPoliciesStatement) node()      {}
 func (*ShowMeasurementCardinalityStatement) node() {}
 func (*ShowMeasurementsStatement) node()           {}
@@ -364,6 +366,8 @@ func (*ShowDatabasesStatement) stmt()              {}
 func (*ShowFieldKeyCardinalityStatement) stmt()    {}
 func (*ShowFieldKeysStatement) stmt()              {}
 func (*ShowFieldMappingsStatement) stmt()          {}
+func (*ShowTagKeyMappingsStatement) stmt()            {}
+func (*RenameTagKeyStatement) stmt()               {}
 func (*ShowMeasurementCardinalityStatement) stmt() {}
 func (*ShowMeasurementsStatement) stmt()           {}
 func (*ShowDatabaseMappingsStatement) stmt()       {}
@@ -803,6 +807,39 @@ func (s *RenameFieldStatement) stmt() {}
 
 // node is unexported to ensure implementations of Node can only originate in this package.
 func (s *RenameFieldStatement) node() {}
+
+// RenameTagKeyStatement represents a command to rename a tag key in a measurement.
+type RenameTagKeyStatement struct {
+	// Old name of the tag key.
+	OldName string
+	// New name of the tag key.
+	NewName string
+	// Name of the measurement containing the tag key.
+	Measurement string
+	// Name of the database containing the measurement.
+	Database string
+}
+
+// String returns a string representation of the rename tag key statement.
+func (s *RenameTagKeyStatement) String() string {
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("ALTER MEASUREMENT ")
+	_, _ = buf.WriteString(QuoteIdent(s.Measurement))
+	if s.Database != "" {
+		_, _ = buf.WriteString(" ON ")
+		_, _ = buf.WriteString(QuoteIdent(s.Database))
+	}
+	_, _ = buf.WriteString(" RENAME TAG KEY ")
+	_, _ = buf.WriteString(QuoteIdent(s.OldName))
+	_, _ = buf.WriteString(" TO ")
+	_, _ = buf.WriteString(QuoteIdent(s.NewName))
+	return buf.String()
+}
+
+// RequiredPrivileges returns the privilege(s) required to execute a RenameTagKeyStatement.
+func (s *RenameTagKeyStatement) RequiredPrivileges() (ExecutionPrivileges, error) {
+	return ExecutionPrivileges{{Admin: false, Name: s.Database, Privilege: WritePrivilege}}, nil
+}
 
 // RenameDatabaseStatement represents a command to rename a database.
 type RenameDatabaseStatement struct {
@@ -3442,6 +3479,60 @@ func (s *ShowFieldMappingsStatement) DefaultDatabase() string {
 	return s.Database
 }
 
+// ShowTagKeyMappingsStatement represents a command for listing tag key mappings.
+type ShowTagKeyMappingsStatement struct {
+	// Database to query. If blank, use the default database.
+	Database string
+
+	// Optional measurement filter.
+	Sources Sources
+
+	// Returns rows starting at an offset from the first row.
+	Offset int
+
+	// Maximum number of rows to be returned.
+	// Unlimited if zero.
+	Limit int
+}
+
+// String returns a string representation of the statement.
+func (s *ShowTagKeyMappingsStatement) String() string {
+	var buf bytes.Buffer
+	_, _ = buf.WriteString("SHOW TAG KEY MAPPINGS")
+
+	if s.Database != "" {
+		_, _ = buf.WriteString(" ON ")
+		_, _ = buf.WriteString(QuoteIdent(s.Database))
+	}
+
+	if s.Sources != nil {
+		_, _ = buf.WriteString(" FROM ")
+		_, _ = buf.WriteString(s.Sources.String())
+	}
+
+	if s.Limit > 0 {
+		_, _ = buf.WriteString(" LIMIT ")
+		_, _ = buf.WriteString(strconv.Itoa(s.Limit))
+	}
+
+	if s.Offset > 0 {
+		_, _ = buf.WriteString(" OFFSET ")
+		_, _ = buf.WriteString(strconv.Itoa(s.Offset))
+	}
+
+	return buf.String()
+}
+
+// RequiredPrivileges returns the privilege(s) required to execute a ShowTagKeyMappingsStatement.
+func (s *ShowTagKeyMappingsStatement) RequiredPrivileges() (ExecutionPrivileges, error) {
+	return ExecutionPrivileges{{Admin: false, Name: s.Database, Privilege: ReadPrivilege}}, nil
+}
+
+// DefaultDatabase returns the default database from the statement.
+func (s *ShowTagKeyMappingsStatement) DefaultDatabase() string {
+	return s.Database
+}
+
 // ShowDatabaseMappingsStatement represents a command for listing database mappings
 type ShowDatabaseMappingsStatement struct {
 	// Returns rows starting at an offset from the first row.
@@ -4220,6 +4311,9 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.SortFields)
 
 	case *ShowFieldMappingsStatement:
+		Walk(v, n.Sources)
+
+	case *ShowTagKeyMappingsStatement:
 		Walk(v, n.Sources)
 
 	case SortFields:
